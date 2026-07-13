@@ -116,7 +116,7 @@ export default function NowScreen() {
 
       {/* waveform */}
       <View style={{ marginVertical: 10 }}>
-        <Waveform trackId={song.id} position={position} duration={dur} onSeek={seekTo} />
+        <Waveform trackId={song.id} uri={song.uri} position={position} duration={dur} onSeek={seekTo} />
       </View>
 
       {/* progress row */}

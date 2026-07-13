@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "scheme": "terminal",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "assetBundlePatterns": [
       "**/*"
     ],

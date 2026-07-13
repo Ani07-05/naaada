@@ -1,8 +1,10 @@
-// Deterministic waveform with tap/drag-to-seek.
-import React, { useRef } from 'react';
+// Waveform with tap/drag-to-seek. Uses the real decoded amplitudes of the audio
+// file when available (cached per track), falling back to a stylized shape.
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, GestureResponderEvent, LayoutChangeEvent } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { waveformHeights, WAVEFORM_BARS } from '@/art/waveform';
+import { extractPeaks, canExtractPeaks } from '@/playback/peaks';
 
 type Props = {
   trackId: string;
@@ -10,14 +12,42 @@ type Props = {
   duration: number;
   onSeek: (pos: number) => void;
   height?: number;
+  uri?: string | null;
 };
 
-export function Waveform({ trackId, position, duration, onSeek, height = 28 }: Props) {
+// Real waveforms are expensive to decode; keep them for the session.
+const peakCache = new Map<string, number[]>();
+
+export function Waveform({ trackId, position, duration, onSeek, height = 28, uri }: Props) {
   const t = useTheme();
   const widthRef = useRef(0);
-  const heights = waveformHeights(trackId);
+  const [heights, setHeights] = useState<number[]>(
+    () => peakCache.get(trackId) ?? waveformHeights(trackId)
+  );
+
+  useEffect(() => {
+    const cached = peakCache.get(trackId);
+    if (cached) {
+      setHeights(cached);
+      return;
+    }
+    // stylized shape shows immediately; swap in the real one when decoded
+    setHeights(waveformHeights(trackId));
+    if (!canExtractPeaks || !uri) return;
+    let alive = true;
+    extractPeaks(uri, WAVEFORM_BARS).then((real) => {
+      if (alive && real && real.length) {
+        peakCache.set(trackId, real);
+        setHeights(real);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [trackId, uri]);
+
   const pct = duration > 0 ? Math.max(0, Math.min(1, position / duration)) : 0;
-  const playhead = Math.floor(pct * WAVEFORM_BARS);
+  const playhead = Math.floor(pct * heights.length);
 
   const onLayout = (e: LayoutChangeEvent) => {
     widthRef.current = e.nativeEvent.layout.width;
