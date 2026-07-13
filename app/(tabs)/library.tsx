@@ -15,7 +15,7 @@ import { useLibrary, songsInPlaylist } from '@/store/libraryStore';
 import { usePlayer } from '@/store/playerStore';
 import { useUi, LibrarySubtab } from '@/store/uiStore';
 import { fmt } from '@/lib/format';
-import { importFromFiles } from '@/import/importAudio';
+import { importFromFiles, scanDeviceMusic } from '@/import/importAudio';
 import { Album, Playlist } from '@/data/types';
 
 const SUBTABS: LibrarySubtab[] = ['songs', 'albums', 'artists', 'playlists'];
@@ -46,6 +46,7 @@ function Songs() {
   const cycleSort = useUi((s) => s.cycleSort);
   const openRowMenu = useUi((s) => s.openRowMenu);
   const nowId = usePlayer((s) => (s.index >= 0 ? s.queue[s.index] : null));
+  const [scanning, setScanning] = React.useState(false);
 
   const sorted = useMemo(() => {
     const arr = [...songs];
@@ -56,6 +57,10 @@ function Songs() {
   }, [songs, sort]);
 
   const play = (id: string) => usePlayer.getState().playSong(id);
+  const scan = async () => {
+    setScanning(true);
+    try { await scanDeviceMusic(); } finally { setScanning(false); }
+  };
 
   return (
     <>
@@ -63,21 +68,36 @@ function Songs() {
         label={`${songs.length} songs`}
         right={<TuiChip label={`sort: ${sort} ↕`} onPress={cycleSort} />}
       />
-      {sorted.map((s, i) => (
-        <ListRow
-          key={s.id}
-          idx={i + 1}
-          left={s.title}
-          sub={`${s.artist}${s.sourceType === 'local' ? '' : ' · demo'}`}
-          right={s.dur ? fmt(s.dur) : '—'}
-          tabularRight
-          active={s.id === nowId}
-          onPress={() => play(s.id)}
-          onMenu={() => openRowMenu({ songId: s.id, x: 0, y: 0 })}
+      {songs.length === 0 ? (
+        <View style={styles.empty}>
+          <TuiText color="inkFaint">┌────────────────────┐</TuiText>
+          <TuiText color="inkSoft">   no music yet</TuiText>
+          <TuiText color="inkFaint">   scan your device or</TuiText>
+          <TuiText color="inkFaint">   add files by hand</TuiText>
+          <TuiText color="inkFaint">└────────────────────┘</TuiText>
+        </View>
+      ) : (
+        sorted.map((s, i) => (
+          <ListRow
+            key={s.id}
+            idx={i + 1}
+            left={s.title}
+            sub={s.artist}
+            right={s.dur ? fmt(s.dur) : '—'}
+            tabularRight
+            active={s.id === nowId}
+            onPress={() => play(s.id)}
+            onMenu={() => openRowMenu({ songId: s.id, x: 0, y: 0 })}
+          />
+        ))
+      )}
+      <View style={{ marginTop: 14, alignItems: 'center', gap: 8 }}>
+        <TuiButton
+          label={scanning ? '⋯ scanning…' : '⌕ scan device for music'}
+          variant="primary"
+          onPress={scanning ? () => {} : scan}
         />
-      ))}
-      <View style={{ marginTop: 14, alignItems: 'center' }}>
-        <TuiButton label="[+] add track" onPress={() => importFromFiles()} />
+        <TuiButton label="[+] add track by hand" onPress={() => importFromFiles()} />
       </View>
     </>
   );
@@ -166,6 +186,7 @@ function PlaylistCard({ playlist }: { playlist: Playlist }) {
 
 const styles = StyleSheet.create({
   subtabs: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 4 },
+  empty: { alignItems: 'center', paddingVertical: 40, gap: 2 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
   card: { width: '47%', borderWidth: 1, borderRadius: 2, padding: 8, gap: 2 },
   plCard: {

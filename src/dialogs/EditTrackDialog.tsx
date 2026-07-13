@@ -41,9 +41,9 @@ export function EditTrackDialog({ songId }: { songId: string }) {
       onClose={close}
       footer={
         <>
-          <TuiButton label="[del] remove" variant="danger" onPress={del} />
+          <TuiButton label="remove" variant="danger" onPress={del} />
           <TuiButton label="cancel" onPress={close} />
-          <TuiButton label="[↵] save" variant="primary" onPress={save} />
+          <TuiButton label="save" variant="primary" onPress={save} />
         </>
       }
     >

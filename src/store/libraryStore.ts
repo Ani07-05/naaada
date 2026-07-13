@@ -2,7 +2,22 @@
 import { create } from 'zustand';
 import { Album, Artist, Playlist, PlaylistEntry, Song, LyricLine } from '@/data/types';
 import * as repo from '@/data/repo';
-import { initDb } from '@/data/db';
+import { initDb, purgeSeedData } from '@/data/db';
+
+// Build the artists list from the real song rows (id = artist name).
+function deriveArtists(songs: Song[]): Artist[] {
+  const map = new Map<string, { albums: Set<string>; songs: number }>();
+  for (const s of songs) {
+    const key = s.artist || 'unknown artist';
+    const e = map.get(key) ?? { albums: new Set<string>(), songs: 0 };
+    if (s.albumId) e.albums.add(s.albumId);
+    e.songs += 1;
+    map.set(key, e);
+  }
+  return [...map.entries()]
+    .map(([name, e]) => ({ id: name, name, albums: e.albums.size, songs: e.songs }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
 
 type LibraryState = {
   songs: Song[];
@@ -39,13 +54,15 @@ export const useLibrary = create<LibraryState>((set, get) => ({
 
   init: async () => {
     await initDb();
+    await purgeSeedData();
     await get().refresh();
     set({ loaded: true });
   },
 
   refresh: async () => {
     const data = await repo.loadAll();
-    set(data);
+    // Artists are derived from the real songs rather than a seeded table.
+    set({ ...data, artists: deriveArtists(data.songs) });
   },
 
   toggleLike: async (songId) => {

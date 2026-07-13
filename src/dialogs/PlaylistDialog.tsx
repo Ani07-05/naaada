@@ -34,9 +34,9 @@ export function PlaylistDialog({ playlistId }: { playlistId?: string }) {
       onClose={close}
       footer={
         <>
-          {existing ? <TuiButton label="[del] delete" variant="danger" onPress={del} /> : null}
+          {existing ? <TuiButton label="delete" variant="danger" onPress={del} /> : null}
           <TuiButton label="cancel" onPress={close} />
-          <TuiButton label={existing ? '[↵] save' : '[↵] create'} variant="primary" onPress={save} />
+          <TuiButton label={existing ? 'save' : 'create'} variant="primary" onPress={save} />
         </>
       }
     >

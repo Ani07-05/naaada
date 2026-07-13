@@ -69,7 +69,7 @@ export function LyricsEditorDialog({ songId }: { songId: string }) {
       footer={
         <>
           <TuiButton label="cancel" onPress={close} />
-          <TuiButton label={`[↵] save · ${nLines}`} variant="primary" onPress={save} />
+          <TuiButton label={`save · ${nLines}`} variant="primary" onPress={save} />
         </>
       }
     >

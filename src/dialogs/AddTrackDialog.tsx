@@ -43,7 +43,7 @@ export function AddTrackDialog() {
       footer={
         <>
           <TuiButton label="cancel" onPress={close} />
-          <TuiButton label="[↵] add" variant="primary" onPress={save} />
+          <TuiButton label="add" variant="primary" onPress={save} />
         </>
       }
     >

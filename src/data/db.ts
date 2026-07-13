@@ -1,8 +1,6 @@
-// SQLite: schema + first-run seed. Single source of truth for the library.
+// SQLite: schema only. Single source of truth for the library.
+// The library starts empty and is populated by scanning the device / importing files.
 import * as SQLite from 'expo-sqlite';
-import {
-  SEED_ALBUMS, SEED_ARTISTS, SEED_SONGS, SEED_PLAYLISTS, SEED_PLAYLIST_ENTRIES, SEED_LYRICS,
-} from './seed';
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
@@ -40,49 +38,19 @@ CREATE TABLE IF NOT EXISTS lyrics (
 export async function initDb(): Promise<void> {
   const db = await getDb();
   await db.execAsync(SCHEMA);
-  await seedIfEmpty(db);
 }
 
-async function seedIfEmpty(db: SQLite.SQLiteDatabase): Promise<void> {
-  const row = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) as c FROM songs');
-  if (row && row.c > 0) return;
-
+// One-time cleanup: wipe any demo/seed rows left over from earlier builds so the
+// library reflects only the user's real, scanned/imported audio.
+export async function purgeSeedData(): Promise<void> {
+  const db = await getDb();
   await db.withTransactionAsync(async () => {
-    for (const a of SEED_ALBUMS) {
-      await db.runAsync(
-        'INSERT OR REPLACE INTO albums (id,title,artist,year,tracks,seed,palette) VALUES (?,?,?,?,?,?,?)',
-        [a.id, a.title, a.artist, a.year, a.tracks, a.seed, a.palette]
-      );
-    }
-    for (const ar of SEED_ARTISTS) {
-      await db.runAsync('INSERT OR REPLACE INTO artists (id,name,albums,songs) VALUES (?,?,?,?)', [
-        ar.id, ar.name, ar.albums, ar.songs,
-      ]);
-    }
-    for (const s of SEED_SONGS) {
-      await db.runAsync(
-        'INSERT OR REPLACE INTO songs (id,title,albumId,artist,dur,track,uri,sourceType,banner,liked) VALUES (?,?,?,?,?,?,?,?,?,?)',
-        [s.id, s.title, s.albumId, s.artist, s.dur, s.track, s.uri, s.sourceType, s.banner, s.liked ? 1 : 0]
-      );
-    }
-    for (const p of SEED_PLAYLISTS) {
-      await db.runAsync('INSERT OR REPLACE INTO playlists (id,name,seed,desc) VALUES (?,?,?,?)', [
-        p.id, p.name, p.seed, p.desc,
-      ]);
-    }
-    for (const e of SEED_PLAYLIST_ENTRIES) {
-      await db.runAsync(
-        'INSERT OR REPLACE INTO playlist_entries (playlistId,songId,position) VALUES (?,?,?)',
-        [e.playlistId, e.songId, e.position]
-      );
-    }
-    for (const [songId, lines] of Object.entries(SEED_LYRICS)) {
-      for (let idx = 0; idx < lines.length; idx++) {
-        const l = lines[idx];
-        await db.runAsync('INSERT OR REPLACE INTO lyrics (songId,idx,t,line) VALUES (?,?,?,?)', [
-          songId, idx, l.t, l.line,
-        ]);
-      }
-    }
+    await db.runAsync("DELETE FROM songs WHERE sourceType != 'local'");
+    await db.runAsync('DELETE FROM albums');
+    await db.runAsync('DELETE FROM artists');
+    // playlists/lyrics that referenced demo songs are harmless once songs are gone,
+    // but clear demo-only playlist entries whose song no longer exists.
+    await db.runAsync('DELETE FROM playlist_entries WHERE songId NOT IN (SELECT id FROM songs)');
+    await db.runAsync('DELETE FROM lyrics WHERE songId NOT IN (SELECT id FROM songs)');
   });
 }
