@@ -68,8 +68,19 @@ export function usePlaybackEngine() {
         TrackPlayer.addEventListener(Event.PlaybackState, (e: any) => {
           const s = usePlayer.getState();
           const song = songById(s.nowPlayingId());
-          const playing = e.state === State.Playing;
-          if (song?.uri && s.playing !== playing) s.setPlaying(playing);
+          if (!song?.uri) return;
+          // Seeking passes through transient states (Buffering/Ready/Connecting)
+          // that aren't real pauses — only Playing/Paused/Stopped/Ended are
+          // definitive, so ignore the rest to avoid a spurious pause loop.
+          if (e.state === State.Playing) {
+            if (!s.playing) s.setPlaying(true);
+          } else if (
+            e.state === State.Paused ||
+            e.state === State.Stopped ||
+            e.state === State.Ended
+          ) {
+            if (s.playing) s.setPlaying(false);
+          }
         })
       );
       subs.push(

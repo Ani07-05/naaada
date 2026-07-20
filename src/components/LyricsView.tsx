@@ -16,11 +16,13 @@ function currentIdx(lines: LyricLine[], t: number): number {
 }
 
 export function LyricsView({
-  songId, position, onEdit,
+  songId, position, onEdit, big,
 }: {
   songId: string;
   position: number;
   onEdit?: () => void;
+  /** Render as the page's main lyrics section instead of a capped subview. */
+  big?: boolean;
 }) {
   const [lines, setLines] = useState<LyricLine[] | null | undefined>(undefined);
   const scrollRef = useRef<ScrollView>(null);
@@ -36,11 +38,14 @@ export function LyricsView({
 
   const idx = lines ? currentIdx(lines, position) : -1;
 
+  // In "big" mode the outer page ScrollView owns scrolling, so there's no
+  // local scrollRef to auto-scroll — nesting a same-direction ScrollView
+  // there would fight the page for the drag gesture.
   useEffect(() => {
-    if (idx >= 0 && rowYs.current[idx] != null) {
+    if (!big && idx >= 0 && rowYs.current[idx] != null) {
       scrollRef.current?.scrollTo({ y: Math.max(0, rowYs.current[idx] - 110), animated: true });
     }
-  }, [idx]);
+  }, [big, idx]);
 
   if (lines === undefined) return null;
   if (!lines) {
@@ -54,29 +59,36 @@ export function LyricsView({
     );
   }
 
+  const rows = lines.map((l, i) => {
+    const color = i === idx ? 'accent' : i < idx ? 'inkSoft' : 'inkFaint';
+    return (
+      <View key={i} onLayout={(e) => (rowYs.current[i] = e.nativeEvent.layout.y)}>
+        <TuiText color={color} weight={i === idx ? 'semibold' : 'normal'} d={big ? 2 : 1} center lh={1.7}>
+          {l.line || ' '}
+        </TuiText>
+      </View>
+    );
+  });
+
+  const editButton = onEdit ? (
+    <View style={{ alignItems: 'center', marginTop: 16 }}>
+      <TuiButton label="✎ edit lyrics" onPress={onEdit} />
+    </View>
+  ) : null;
+
+  if (big) {
+    return (
+      <View>
+        {rows}
+        {editButton}
+      </View>
+    );
+  }
+
   return (
     <ScrollView ref={scrollRef} style={styles.scroll} showsVerticalScrollIndicator={false}>
-      {lines.map((l, i) => {
-        const color = i === idx ? 'accent' : i < idx ? 'inkSoft' : 'inkFaint';
-        return (
-          <View key={i} onLayout={(e) => (rowYs.current[i] = e.nativeEvent.layout.y)}>
-            <TuiText
-              color={color}
-              weight={i === idx ? 'semibold' : 'normal'}
-              d={1}
-              center
-              lh={1.7}
-            >
-              {l.line || ' '}
-            </TuiText>
-          </View>
-        );
-      })}
-      {onEdit ? (
-        <View style={{ alignItems: 'center', marginTop: 16 }}>
-          <TuiButton label="✎ edit lyrics" onPress={onEdit} />
-        </View>
-      ) : null}
+      {rows}
+      {editButton}
     </ScrollView>
   );
 }

@@ -1,6 +1,6 @@
-// Now Playing (hero): art/banner, waveform, progress, transport, extras, track info, lyrics.
-import React, { useState } from 'react';
-import { View, Pressable, StyleSheet, Text, Image } from 'react-native';
+// Now Playing (hero): art/banner, waveform, progress, transport, extras, lyrics.
+import React, { useRef } from 'react';
+import { View, Pressable, StyleSheet, Text, Image, PanResponder } from 'react-native';
 import { TuiScreen } from '@/components/TuiScreen';
 import { TuiText } from '@/components/TuiText';
 import { Breadcrumb } from '@/components/Breadcrumb';
@@ -24,7 +24,6 @@ const fmtSpeed = (n: number) => `${n}×`;
 
 export default function NowScreen() {
   const t = useTheme();
-  const [view, setView] = useState<'art' | 'lyrics'>('art');
   const index = usePlayer((s) => s.index);
   const queue = usePlayer((s) => s.queue);
   const playing = usePlayer((s) => s.playing);
@@ -62,56 +61,49 @@ export default function NowScreen() {
   const seed = album?.seed ?? song.id;
   const dur = duration || song.dur;
 
+  // Horizontal swipe on the art -> prev/next; vertical drag falls through to
+  // the screen's own ScrollView so it doesn't fight page scrolling.
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+      onPanResponderRelease: (_, g) => {
+        if (g.dx <= -40) usePlayer.getState().next();
+        else if (g.dx >= 40) usePlayer.getState().prev();
+      },
+    })
+  ).current;
+
   return (
     <TuiScreen bottomInset={140}>
       <Breadcrumb parts={[{ label: 'library' }, { label: song.artist }, { label: 'now playing' }]} />
 
-      {/* view toggle + theme/edit chips */}
-      <View style={[styles.toggleRow, { borderBottomColor: t.colors.hairline }]}>
-        <View style={styles.toggleTabs}>
-          <Pressable onPress={() => setView('art')} hitSlop={6} style={styles.toggleTab}>
-            <TuiText color={view === 'art' ? 'accent' : 'inkFaint'}>{view === 'art' ? '[art]' : ' art '}</TuiText>
-          </Pressable>
-          <Pressable onPress={() => setView('lyrics')} hitSlop={6} style={styles.toggleTab}>
-            <TuiText color={view === 'lyrics' ? 'accent' : 'inkFaint'}>
-              {view === 'lyrics' ? '[lyrics]' : ' lyrics '}
-            </TuiText>
-          </Pressable>
-        </View>
-        <View style={styles.chipRow}>
-          <TuiChip label="◐ theme" onPress={cycleTheme} />
-          <TuiChip label="✎ edit" onPress={() => useUi.getState().openDialog({ kind: 'editTrack', songId: song.id })} />
-        </View>
+      {/* theme/edit chips */}
+      <View style={[styles.chipRow, styles.toggleRow, { borderBottomColor: t.colors.hairline }]}>
+        <TuiChip label="◐ theme" onPress={cycleTheme} />
+        <TuiChip label="✎ edit" onPress={() => useUi.getState().openDialog({ kind: 'editTrack', songId: song.id })} />
       </View>
 
-      {/* art / banner / lyrics */}
-      {view === 'art' ? (
-        <View style={styles.art}>
-          {song.coverUri ? (
-            <Image source={{ uri: song.coverUri }} style={styles.coverImg} resizeMode="cover" />
-          ) : song.banner ? (
-            <Text
-              style={{
-                color: t.colors.accent,
-                fontFamily: t.family('regular', /[ऀ-ॿ]/.test(song.banner)),
-                fontSize: t.size(0),
-                lineHeight: t.size(0) * 1.25,
-                textAlign: 'center',
-              }}
-            >
-              {song.banner}
-            </Text>
-          ) : (
-            <BlockCover seed={seed} size={10} cell={11} label={song.title} />
-          )}
-        </View>
-      ) : (
-        <LyricsView
-          songId={song.id}
-          position={position}
-          onEdit={() => useUi.getState().openDialog({ kind: 'editLyrics', songId: song.id })}
-        />
-      )}
+      {/* art / banner */}
+      <View style={styles.art} {...swipe.panHandlers}>
+        {song.coverUri ? (
+          <Image source={{ uri: song.coverUri }} style={styles.coverImg} resizeMode="cover" />
+        ) : song.banner ? (
+          <Text
+            style={{
+              color: t.colors.accent,
+              fontFamily: t.family('regular', /[ऀ-ॿ]/.test(song.banner)),
+              fontSize: t.size(0),
+              lineHeight: t.size(0) * 1.25,
+              textAlign: 'center',
+            }}
+          >
+            {song.banner}
+          </Text>
+        ) : (
+          <BlockCover seed={seed} size={10} cell={11} label={song.title} />
+        )}
+      </View>
 
       {/* title / artist / album line */}
       <View style={styles.meta}>
@@ -158,13 +150,14 @@ export default function NowScreen() {
         <TuiChip label={`[≡] queue (${queue.length})`} onPress={() => {}} />
       </View>
 
-      {/* track info */}
-      <SectionHead label="track info" />
-      <InfoRow k="track" v={album ? `${String(song.track).padStart(2, '0')} / ${album.tracks}` : String(song.track)} />
-      <InfoRow k="length" v={fmt(song.dur || dur)} />
-      {album ? <InfoRow k="album" v={album.title} /> : null}
-      {album ? <InfoRow k="year" v={String(album.year)} /> : null}
-      <InfoRow k="source" v={song.sourceType === 'local' ? 'local file' : 'demo'} />
+      {/* lyrics */}
+      <SectionHead label="lyrics" />
+      <LyricsView
+        songId={song.id}
+        position={position}
+        onEdit={() => useUi.getState().openDialog({ kind: 'editLyrics', songId: song.id })}
+        big
+      />
     </TuiScreen>
   );
 }
@@ -184,38 +177,26 @@ function Transport({
       hitSlop={8}
       style={({ pressed }) => [
         styles.tbtn,
-        primary && { borderWidth: 1, borderColor: t.colors.ink, backgroundColor: pressed ? t.colors.ink : 'transparent', width: 56, height: 48 },
-        primary && pressed && { backgroundColor: t.colors.ink },
+        primary && [
+          styles.tbtnPrimary,
+          { borderColor: t.colors.accent, backgroundColor: pressed ? t.colors.selection : t.colors.bg },
+        ],
         !primary && pressed && { backgroundColor: t.colors.selection },
       ]}
     >
-      <TuiText color={active ? 'accent' : 'ink'} d={primary ? 2 : 1}>{label}</TuiText>
+      <TuiText color={primary ? 'accent' : active ? 'accent' : 'ink'} d={primary ? 3 : 1}>{label}</TuiText>
     </Pressable>
-  );
-}
-
-function InfoRow({ k, v }: { k: string; v: string }) {
-  return (
-    <View style={styles.info}>
-      <TuiText color="inkSoft" d={-1}>{k}</TuiText>
-      <TuiText color="ink" d={-1} tabular>{v}</TuiText>
-    </View>
   );
 }
 
 const styles = StyleSheet.create({
   emptyWrap: { alignItems: 'center', paddingVertical: 60, gap: 2 },
   toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     borderBottomWidth: 1,
     borderStyle: 'dashed',
     paddingBottom: 8,
     marginTop: 12,
   },
-  toggleTabs: { flexDirection: 'row', gap: 10 },
-  toggleTab: { paddingVertical: 4 },
   chipRow: { flexDirection: 'row', gap: 6 },
   art: { alignItems: 'center', justifyContent: 'center', paddingVertical: 20, minHeight: 200 },
   coverImg: { width: 200, height: 200, borderRadius: 4 },
@@ -223,6 +204,7 @@ const styles = StyleSheet.create({
   progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   transport: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', marginTop: 16 },
   tbtn: { width: 48, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 2 },
+  tbtnPrimary: { width: 64, height: 64, borderRadius: 32, borderWidth: 2 },
   extras: {
     flexDirection: 'row',
     gap: 8,
@@ -231,5 +213,4 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderStyle: 'dashed',
   },
-  info: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
 });
