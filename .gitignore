@@ -28,3 +28,6 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# gradle build logs (local only)
+gradle-*.log
