@@ -1,6 +1,6 @@
 // Now Playing (hero): art/banner, waveform, progress, transport, extras, track info, lyrics.
 import React, { useState } from 'react';
-import { View, Pressable, StyleSheet, Text } from 'react-native';
+import { View, Pressable, StyleSheet, Text, Image } from 'react-native';
 import { TuiScreen } from '@/components/TuiScreen';
 import { TuiText } from '@/components/TuiText';
 import { Breadcrumb } from '@/components/Breadcrumb';
@@ -14,10 +14,13 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { usePlayer } from '@/store/playerStore';
 import { useLibrary, songById, albumById } from '@/store/libraryStore';
 import { useUi } from '@/store/uiStore';
-import { seekTo } from '@/playback/usePlayback';
+import { seekTo, setPlaybackRate } from '@/playback/usePlayback';
 import { fmt } from '@/lib/format';
 import { useSettings } from '@/store/settingsStore';
 import { THEME_IDS } from '@/theme/tokens';
+
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const fmtSpeed = (n: number) => `${n}×`;
 
 export default function NowScreen() {
   const t = useTheme();
@@ -34,6 +37,9 @@ export default function NowScreen() {
   const theme = useSettings((s) => s.theme);
   const setTheme = useSettings((s) => s.setTheme);
   const cycleTheme = () => setTheme(THEME_IDS[(THEME_IDS.indexOf(theme) + 1) % THEME_IDS.length]);
+
+  const speed = useSettings((s) => s.speed);
+  const cycleSpeed = () => setPlaybackRate(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length] ?? 1);
 
   const nowId = index >= 0 && index < queue.length ? queue[index] : null;
   const song = songById(nowId);
@@ -81,7 +87,9 @@ export default function NowScreen() {
       {/* art / banner / lyrics */}
       {view === 'art' ? (
         <View style={styles.art}>
-          {song.banner ? (
+          {song.coverUri ? (
+            <Image source={{ uri: song.coverUri }} style={styles.coverImg} resizeMode="cover" />
+          ) : song.banner ? (
             <Text
               style={{
                 color: t.colors.accent,
@@ -146,6 +154,7 @@ export default function NowScreen() {
           active={song.liked}
           onPress={() => useLibrary.getState().toggleLike(song.id)}
         />
+        <TuiChip label={`▷ ${fmtSpeed(speed)}`} active={speed !== 1} onPress={cycleSpeed} />
         <TuiChip label={`[≡] queue (${queue.length})`} onPress={() => {}} />
       </View>
 
@@ -203,12 +212,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderStyle: 'dashed',
     paddingBottom: 8,
-    marginTop: 4,
+    marginTop: 12,
   },
   toggleTabs: { flexDirection: 'row', gap: 10 },
   toggleTab: { paddingVertical: 4 },
   chipRow: { flexDirection: 'row', gap: 6 },
   art: { alignItems: 'center', justifyContent: 'center', paddingVertical: 20, minHeight: 200 },
+  coverImg: { width: 200, height: 200, borderRadius: 4 },
   meta: { alignItems: 'center', gap: 2, marginTop: 8 },
   progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   transport: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', marginTop: 16 },

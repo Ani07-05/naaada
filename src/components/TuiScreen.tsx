@@ -17,7 +17,7 @@ export function TuiScreen({ children, scroll = true, pad = true, contentStyle, b
   const insets = useSafeAreaInsets();
   const padStyle: ViewStyle = {
     paddingHorizontal: pad ? 13 : 0,
-    paddingTop: pad ? 12 : 0,
+    paddingTop: pad ? insets.top + 12 : 0,
     paddingBottom: bottomInset,
   };
 

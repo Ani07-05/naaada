@@ -12,6 +12,7 @@ export type Song = {
   uri: string | null; // local file path / content uri — null for demo-only seed rows
   sourceType: SourceType;
   banner: string | null; // custom ASCII banner
+  coverUri?: string | null; // custom image cover (file path); overrides banner/block art
   liked: boolean;
 };
 

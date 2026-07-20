@@ -56,9 +56,6 @@ export function TuiNav({ state, navigation }: BottomTabBarProps) {
           );
         })}
       </View>
-      <TuiText color="inkFaint" d={-3} center style={styles.hint}>
-        [tap] select · [L][S][N][Q] jump · [space] play/pause
-      </TuiText>
     </View>
   );
 }
@@ -67,5 +64,4 @@ const styles = StyleSheet.create({
   wrap: { borderTopWidth: 1, paddingTop: 8, paddingHorizontal: 8 },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   tab: { flexDirection: 'row', alignItems: 'center', minHeight: 32, paddingHorizontal: 2 },
-  hint: { marginTop: 4 },
 });

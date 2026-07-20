@@ -20,6 +20,7 @@ type SettingsState = {
   hydrated: boolean;
 
   // playback / audio prefs
+  speed: number; // playback rate, 0.5 .. 2
   crossfade: boolean;
   gapless: boolean;
   eq: Eq;
@@ -32,6 +33,7 @@ type SettingsState = {
   setAccent: (a: AccentId | null) => void;
   setCoverStyle: (c: CoverStyle) => void;
   setWelcomeSeen: (v: boolean) => void;
+  setSpeed: (n: number) => void;
   setCrossfade: (v: boolean) => void;
   setGapless: (v: boolean) => void;
   setEq: (v: Eq) => void;
@@ -50,6 +52,7 @@ export const useSettings = create<SettingsState>()(
       welcomeSeen: false,
       hydrated: false,
 
+      speed: 1,
       crossfade: false,
       gapless: true,
       eq: 'flat',
@@ -63,6 +66,7 @@ export const useSettings = create<SettingsState>()(
       setAccent: (accent) => set({ accent }),
       setCoverStyle: (coverStyle) => set({ coverStyle }),
       setWelcomeSeen: (welcomeSeen) => set({ welcomeSeen }),
+      setSpeed: (speed) => set({ speed: Math.max(0.25, Math.min(4, speed)) }),
       setCrossfade: (crossfade) => set({ crossfade }),
       setGapless: (gapless) => set({ gapless }),
       setEq: (eq) => set({ eq }),
@@ -79,6 +83,7 @@ export const useSettings = create<SettingsState>()(
         accent: s.accent,
         coverStyle: s.coverStyle,
         welcomeSeen: s.welcomeSeen,
+        speed: s.speed,
         crossfade: s.crossfade,
         gapless: s.gapless,
         eq: s.eq,

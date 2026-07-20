@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS artists (
 );
 CREATE TABLE IF NOT EXISTS songs (
   id TEXT PRIMARY KEY, title TEXT, albumId TEXT, artist TEXT, dur INTEGER,
-  track INTEGER, uri TEXT, sourceType TEXT, banner TEXT, liked INTEGER DEFAULT 0
+  track INTEGER, uri TEXT, sourceType TEXT, banner TEXT, coverUri TEXT, liked INTEGER DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS playlists (
   id TEXT PRIMARY KEY, name TEXT, seed TEXT, desc TEXT
@@ -38,6 +38,21 @@ CREATE TABLE IF NOT EXISTS lyrics (
 export async function initDb(): Promise<void> {
   const db = await getDb();
   await db.execAsync(SCHEMA);
+  // Migrations for DBs created before a column existed (CREATE TABLE IF NOT
+  // EXISTS won't add columns to an already-present table).
+  await ensureColumn(db, 'songs', 'coverUri', 'TEXT');
+}
+
+async function ensureColumn(
+  db: SQLite.SQLiteDatabase,
+  table: string,
+  col: string,
+  type: string
+): Promise<void> {
+  const cols = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
+  if (!cols.some((c) => c.name === col)) {
+    await db.runAsync(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
+  }
 }
 
 // One-time cleanup: wipe any demo/seed rows left over from earlier builds so the

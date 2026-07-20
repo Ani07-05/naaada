@@ -1,12 +1,13 @@
 {
   "expo": {
-    "name": "Terminal",
+    "name": "Naada",
     "slug": "terminal",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "terminal",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
+    "icon": "./assets/images/icon.png",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -21,6 +22,10 @@
     },
     "android": {
       "package": "com.terminal.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0d0d0d"
+      },
       "permissions": [
         "android.permission.READ_MEDIA_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -40,12 +45,18 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow Terminal to access your audio files.",
-          "savePhotosPermission": "Allow Terminal to save files.",
+          "photosPermission": "Allow Naada to access your audio files.",
+          "savePhotosPermission": "Allow Naada to save files.",
           "isAccessMediaLocationEnabled": true
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Naada to pick a cover image for your tracks."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

@@ -4,6 +4,7 @@
 import { useEffect, useRef } from 'react';
 import { usePlayer } from '@/store/playerStore';
 import { songById, useLibrary } from '@/store/libraryStore';
+import { useSettings } from '@/store/settingsStore';
 import * as repo from '@/data/repo';
 import { setupPlayer } from './setup';
 import TrackPlayer, { Event, State, isTPAvailable } from './tp';
@@ -21,6 +22,18 @@ export async function seekTo(pos: number) {
   if (isReal(song?.uri)) {
     try {
       await TrackPlayer.seekTo(pos);
+    } catch {}
+  }
+}
+
+// Set the playback speed: persist it and push to the native player if a real
+// track is loaded. Demo/sim tracks read the rate off settings each tick.
+export async function setPlaybackRate(rate: number) {
+  useSettings.getState().setSpeed(rate);
+  const song = songById(usePlayer.getState().nowPlayingId());
+  if (isReal(song?.uri)) {
+    try {
+      await TrackPlayer.setRate(useSettings.getState().speed);
     } catch {}
   }
 }
@@ -91,6 +104,9 @@ export function usePlaybackEngine() {
             duration: song.dur || undefined,
           });
           usePlayer.getState().setDuration(song.dur || 0);
+          try {
+            await TrackPlayer.setRate(useSettings.getState().speed);
+          } catch {}
           if (usePlayer.getState().playing) await TrackPlayer.play();
         } catch (e) {
           console.warn('load track failed', e);
@@ -130,8 +146,9 @@ function startSim(ref: React.MutableRefObject<ReturnType<typeof setInterval> | n
   ref.current = setInterval(() => {
     const s = usePlayer.getState();
     const dur = s.duration || 0;
-    if (dur > 0 && s.position + 1 >= dur) s.next(true);
-    else s.setPosition(s.position + 1);
+    const step = useSettings.getState().speed || 1;
+    if (dur > 0 && s.position + step >= dur) s.next(true);
+    else s.setPosition(s.position + step);
   }, 1000);
 }
 

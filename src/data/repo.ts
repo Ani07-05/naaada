@@ -4,14 +4,15 @@ import { Album, Artist, Playlist, PlaylistEntry, Song, LyricLine } from './types
 
 type SongRow = {
   id: string; title: string; albumId: string | null; artist: string; dur: number;
-  track: number; uri: string | null; sourceType: string; banner: string | null; liked: number;
+  track: number; uri: string | null; sourceType: string; banner: string | null;
+  coverUri: string | null; liked: number;
 };
 
 function toSong(r: SongRow): Song {
   return {
     id: r.id, title: r.title, albumId: r.albumId, artist: r.artist, dur: r.dur,
     track: r.track, uri: r.uri, sourceType: (r.sourceType as Song['sourceType']) ?? 'seed',
-    banner: r.banner, liked: !!r.liked,
+    banner: r.banner, coverUri: r.coverUri, liked: !!r.liked,
   };
 }
 
@@ -69,9 +70,10 @@ export async function updateSong(id: string, patch: Partial<Song>): Promise<void
     artist: patch.artist ?? null,
     albumId: patch.albumId ?? null,
     banner: patch.banner ?? null,
+    coverUri: patch.coverUri ?? null,
     dur: patch.dur ?? null,
   };
-  (['title', 'artist', 'albumId', 'banner', 'dur'] as const).forEach((k) => {
+  (['title', 'artist', 'albumId', 'banner', 'coverUri', 'dur'] as const).forEach((k) => {
     if (patch[k] !== undefined) {
       cols.push(`${k} = ?`);
       vals.push(map[k]);
@@ -86,8 +88,8 @@ export async function addSong(song: Omit<Song, 'id' | 'liked'> & { id?: string }
   const db = await getDb();
   const id = song.id ?? 'usr' + Math.random().toString(36).slice(2, 9);
   await db.runAsync(
-    'INSERT INTO songs (id,title,albumId,artist,dur,track,uri,sourceType,banner,liked) VALUES (?,?,?,?,?,?,?,?,?,0)',
-    [id, song.title, song.albumId, song.artist, song.dur, song.track, song.uri, song.sourceType, song.banner]
+    'INSERT INTO songs (id,title,albumId,artist,dur,track,uri,sourceType,banner,coverUri,liked) VALUES (?,?,?,?,?,?,?,?,?,?,0)',
+    [id, song.title, song.albumId, song.artist, song.dur, song.track, song.uri, song.sourceType, song.banner, song.coverUri ?? null]
   );
   return id;
 }

@@ -1,6 +1,6 @@
 // Edit track: title / artist / album / custom ASCII banner + lyrics shortcut + delete.
 import React, { useState } from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Image } from 'react-native';
 import { TuiDialog } from '@/components/TuiDialog';
 import { TuiInput } from '@/components/TuiInput';
 import { TuiButton } from '@/components/TuiButton';
@@ -8,6 +8,7 @@ import { TuiChip } from '@/components/TuiChip';
 import { TuiText } from '@/components/TuiText';
 import { useLibrary, songById } from '@/store/libraryStore';
 import { useUi } from '@/store/uiStore';
+import { pickCoverImage } from '@/import/pickCover';
 
 export function EditTrackDialog({ songId }: { songId: string }) {
   const close = useUi((s) => s.closeDialog);
@@ -18,8 +19,20 @@ export function EditTrackDialog({ songId }: { songId: string }) {
   const [artist, setArtist] = useState(song?.artist ?? '');
   const [albumId, setAlbumId] = useState<string | null>(song?.albumId ?? null);
   const [banner, setBanner] = useState(song?.banner ?? '');
+  const [coverUri, setCoverUri] = useState<string | null>(song?.coverUri ?? null);
+  const [picking, setPicking] = useState(false);
 
   if (!song) return null;
+
+  const pickCover = async () => {
+    setPicking(true);
+    try {
+      const uri = await pickCoverImage(songId);
+      if (uri) setCoverUri(uri);
+    } finally {
+      setPicking(false);
+    }
+  };
 
   const save = async () => {
     await lib.editSong(songId, {
@@ -27,6 +40,7 @@ export function EditTrackDialog({ songId }: { songId: string }) {
       artist: artist.trim() || song.artist,
       albumId,
       banner: banner.trim() ? banner : null,
+      coverUri,
     });
     close();
   };
@@ -49,6 +63,23 @@ export function EditTrackDialog({ songId }: { songId: string }) {
     >
       <TuiInput label="title" value={title} onChangeText={setTitle} />
       <TuiInput label="artist" value={artist} onChangeText={setArtist} />
+
+      <TuiText color="inkSoft" d={-1}>cover image</TuiText>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        {coverUri ? (
+          <Image
+            source={{ uri: coverUri }}
+            style={{ width: 56, height: 56, borderRadius: 3 }}
+            resizeMode="cover"
+          />
+        ) : (
+          <TuiText color="inkFaint" d={-1}>none — using ascii / block art</TuiText>
+        )}
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          <TuiButton label={picking ? '…' : coverUri ? 'change' : '▣ pick image'} onPress={pickCover} />
+          {coverUri ? <TuiButton label="clear" variant="danger" onPress={() => setCoverUri(null)} /> : null}
+        </View>
+      </View>
 
       <TuiText color="inkSoft" d={-1}>album</TuiText>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
